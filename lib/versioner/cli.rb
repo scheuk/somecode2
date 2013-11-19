@@ -63,8 +63,9 @@ module Versioner
 
     class Next < BaseVersionStateTask
 
-      desc 'release', 'show next release version'
+      class_option :push_to_origin, aliases: %w[-p], :type => :boolean, :description => 'Push to Origin after Bump'
 
+      desc 'release', 'show next release version'
       def release
         say find_next_release_version
       end
@@ -75,6 +76,7 @@ module Versioner
 
         Dir.chdir(options[:git_dir]) {
           %x[git branch version/#{next_release_version}]
+          %x[git push origin version/#{next_release_version}] if options[:push_to_origin]
         }
 
         say "Bumped version to #{next_release_version}"
