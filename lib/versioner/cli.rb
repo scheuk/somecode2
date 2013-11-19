@@ -94,7 +94,7 @@ module Versioner
 
     class Root < Thor
 
-      desc 'next', 'Tasks for version state'
+      desc 'version', 'Tasks for version state'
       subcommand 'version', Versioner::Cli::Version
 
     end
