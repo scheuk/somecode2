@@ -96,6 +96,7 @@ module Versioner
 
         ([options[:version_file]] + options[:related_version_files]).each { |version_file|
           File.open(version_file, 'w') { |f| f.write(next_release_version) }
+          say "Bumped #{version_file} to #{next_release_version}"
         }
 
         say "Bumped version to #{next_release_version}"
