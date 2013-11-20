@@ -7,6 +7,7 @@ module Versioner
       include Thor::Actions
       class_option :version_file, aliases: %w[-f], :type => :string, :description => 'Version File', :default => './VERSION'
       class_option :git_dir, aliases: %w[-d], :type => :string, :description => 'Git Repo Directory', :default => '.'
+      class_option :related_version_files, aliases: %w[-r], :type => :array, :description => 'Related Version Files', :default => []
 
       no_commands {
         def find_current_release_version
@@ -59,6 +60,18 @@ module Versioner
         say find_current_release_version
       end
 
+      desc 'push', 'push to the current released version to origin'
+
+      def push
+        current_release_version = find_current_release_version
+
+        Dir.chdir(options[:git_dir]) {
+          %x[git push origin version/#{current_release_version}]
+        }
+
+        say "Pushed version #{current_release_version}"
+      end
+
     end
 
     class Next < BaseVersionStateTask
@@ -66,17 +79,23 @@ module Versioner
       class_option :push_to_origin, aliases: %w[-p], :type => :boolean, :description => 'Push to Origin after Bump'
 
       desc 'release', 'show next release version'
+
       def release
         say find_next_release_version
       end
 
       desc 'bump', 'bump to the next release version'
+
       def bump
         next_release_version = find_next_release_version
 
         Dir.chdir(options[:git_dir]) {
           %x[git branch version/#{next_release_version}]
           %x[git push origin version/#{next_release_version}] if options[:push_to_origin]
+        }
+
+        ([options[:version_file]] + options[:related_version_files]).each { |version_file|
+          File.open(version_file, 'w') { |f| f.write(next_release_version) }
         }
 
         say "Bumped version to #{next_release_version}"

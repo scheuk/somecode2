@@ -11,6 +11,10 @@ describe "version" do
     Dir.mktmpdir
   }
 
+  let(:related_version_files) {
+    ["#{File.dirname(__FILE__)}/TEST_VERSION_2", "#{File.dirname(__FILE__)}/TEST_VERSION_3"]
+  }
+
   before {
     File.open(version_file, 'w') { |f| f.write("") }
 
@@ -24,12 +28,17 @@ describe "version" do
 
   after {
     File.delete(version_file)
+
+    related_version_files.each { |related_file|
+      File.delete(related_file) if File.exist?(related_file)
+    }
+
     FileUtils.remove_entry git_dir
   }
 
   subject {
     capture(:stdout) {
-      Versioner::Cli::Root.start("#{example.metadata[:example_group].full_description} -d #{git_dir} -f #{File.dirname(__FILE__)}/TEST_VERSION".split)
+      Versioner::Cli::Root.start("#{example.metadata[:example_group].full_description} -d #{git_dir} -f #{File.dirname(__FILE__)}/TEST_VERSION -r #{related_version_files.join(" ")}".split)
     }
   }
 
@@ -68,6 +77,24 @@ describe "version" do
         }).to include("version/0.0.1")
 
 
+      end
+
+      it "should bump version and make branch" do
+        should eq("Bumped version to 0.0.1\n")
+
+        expect(Dir.chdir(git_dir) {
+          %x[git branch]
+        }).to include("version/0.0.1")
+
+        expect(Dir.chdir(git_dir) {
+          %x[git branch]
+        }).to_not include("version/0.0.2")
+
+        expect(File.read(version_file)).to eq("0.0.1")
+
+        related_version_files.each { |related_file|
+          expect(File.read(related_file)).to eq("0.0.1")
+        }
       end
 
     end

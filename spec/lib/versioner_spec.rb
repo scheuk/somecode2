@@ -6,14 +6,18 @@ describe "version" do
     "#{File.dirname(__FILE__)}/TEST_VERSION"
   }
 
+  let(:related_version_files) {
+    ["#{File.dirname(__FILE__)}/TEST_VERSION_2", "#{File.dirname(__FILE__)}/TEST_VERSION_3"]
+  }
+
   let(:git_dir) {
     Dir.mktmpdir
   }
 
   before {
-    File.open(version_file, 'w') {|f| f.write(" 1.2.0 ") }
+    File.open(version_file, 'w') { |f| f.write(" 1.2.0 ") }
 
-    Dir.chdir(git_dir){
+    Dir.chdir(git_dir) {
       %x[git init]
       %x[touch somefile]
       %x[git add somefile]
@@ -30,12 +34,16 @@ describe "version" do
 
   after {
     File.delete(version_file)
+    related_version_files.each { |related_file|
+      File.delete(related_file) if File.exist?(related_file)
+    }
+
     FileUtils.remove_entry git_dir
   }
 
   subject {
     capture(:stdout) {
-      Versioner::Cli::Root.start("#{example.metadata[:example_group].full_description} -d #{git_dir} -f #{File.dirname(__FILE__)}/TEST_VERSION".split)
+      Versioner::Cli::Root.start("#{example.metadata[:example_group].full_description} -d #{git_dir} -f #{File.dirname(__FILE__)}/TEST_VERSION -r #{related_version_files.join(" ")}".split)
     }
   }
 
@@ -43,13 +51,13 @@ describe "version" do
 
     describe "dev" do
 
-      it { should eq("1.2.0\n")}
+      it { should eq("1.2.0\n") }
 
     end
 
     describe "release" do
 
-      it { should eq("1.2.34\n")}
+      it { should eq("1.2.34\n") }
 
     end
 
@@ -59,7 +67,7 @@ describe "version" do
 
     describe "release" do
 
-      it { should eq("1.2.35\n")}
+      it { should eq("1.2.35\n") }
 
     end
 
@@ -72,7 +80,15 @@ describe "version" do
           %x[git branch]
         }).to include("version/1.2.35")
 
+        expect(Dir.chdir(git_dir) {
+          %x[git branch]
+        }).to_not include("version/1.2.36")
 
+        expect(File.read(version_file)).to eq("1.2.35")
+
+        related_version_files.each { |related_file|
+          expect(File.read(related_file)).to eq("1.2.35")
+        }
       end
 
     end
