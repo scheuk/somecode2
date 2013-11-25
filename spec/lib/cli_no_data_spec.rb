@@ -1,3 +1,4 @@
+require 'tmpdir'
 require 'versioner/cli'
 
 describe "version" do
@@ -10,26 +11,18 @@ describe "version" do
     Dir.mktmpdir
   }
 
-
   let(:related_version_files) {
     ["#{File.dirname(__FILE__)}/TEST_VERSION_2", "#{File.dirname(__FILE__)}/TEST_VERSION_3"]
   }
 
   before {
-    File.open(version_file, 'w') { |f| f.write(" 1.2.0 ") }
+    File.open(version_file, 'w') { |f| f.write("") }
 
     Dir.chdir(git_dir) {
       %x[git init]
       %x[touch somefile]
       %x[git add somefile]
       %x[git commit -m "init" .]
-      %x[git branch version/1.1.32]
-      %x[git branch version/1.1.33]
-      %x[git branch version/1.1.34]
-      %x[git branch origin/version/1.1.31]
-      %x[git branch origin/version/1.1.32]
-      %x[git branch origin/version/1.1.33]
-      %x[git branch origin/version/1.1.34]
     }
   }
 
@@ -53,13 +46,13 @@ describe "version" do
 
     describe "dev" do
 
-      it { should eq("1.2.0\n") }
+      it { should eq("0.0.0\n") }
 
     end
 
     describe "release" do
 
-      it { should eq("1.1.34\n") }
+      it { should eq("0.0.0\n") }
 
     end
 
@@ -69,7 +62,7 @@ describe "version" do
 
     describe "release" do
 
-      it { should eq("1.2.1\n") }
+      it { should eq("0.0.1\n") }
 
     end
 
@@ -77,20 +70,30 @@ describe "version" do
     describe "bump" do
 
       it "should bump version and make branch" do
-        should eq("Bumped version to 1.2.1\n")
+        should include("Bumped version to 0.0.1\n")
 
         expect(Dir.chdir(git_dir) {
           %x[git branch]
-        }).to include("version/1.2.1")
+        }).to include("version/0.0.1")
+
+
+      end
+
+      it "should bump version and make branch" do
+        should include("Bumped version to 0.0.1\n")
 
         expect(Dir.chdir(git_dir) {
           %x[git branch]
-        }).to_not include("version/1.2.2")
+        }).to include("version/0.0.1")
 
-        expect(File.read(version_file)).to eq("1.2.1")
+        expect(Dir.chdir(git_dir) {
+          %x[git branch]
+        }).to_not include("version/0.0.2")
+
+        expect(File.read(version_file)).to eq("0.0.1")
 
         related_version_files.each { |related_file|
-          expect(File.read(related_file)).to eq("1.2.1")
+          expect(File.read(related_file)).to eq("0.0.1")
         }
       end
 

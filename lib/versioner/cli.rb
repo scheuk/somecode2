@@ -1,5 +1,33 @@
 require 'thor'
 
+class String
+    def compare_as_version_string(other_string)
+
+      self_parts = self.split(".")
+      other_parts = other_string.split(".")
+
+      if(self_parts.empty? ||  other_parts.empty?)
+        return self_parts.size <=> other_parts.size
+      end
+
+      zipped = self_parts.first(other_parts.size).zip(other_parts)
+
+      results = zipped.map { |self_item, other_item|
+        self_item.to_i <=> other_item.to_i
+      }
+
+      result = results.detect { |result_item|
+        result_item != 0
+      } || 0
+
+      if(result == 0 && other_parts.size != self_parts.size)
+        return self_parts.size <=> other_parts.size
+      end
+
+      result
+    end
+end
+
 module Versioner
   module Cli
 
@@ -19,7 +47,9 @@ module Versioner
               branch.start_with?("version") || branch.start_with?("origin/version")
             }.map { |branch|
               branch.split("/").last
-            }.sort.last
+            }.sort { |v1, v2|
+              v1.compare_as_version_string(v2)
+            }.last
 
             default(current_release_version, "0.0.0").strip
           }

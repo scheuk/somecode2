@@ -43,7 +43,10 @@ describe "version" do
 
   subject {
     capture(:stdout) {
-      Versioner::Cli::Root.start("#{example.metadata[:example_group].full_description} -d #{git_dir} -f #{File.dirname(__FILE__)}/TEST_VERSION -r #{related_version_files.join(" ")}".split)
+
+      action_example_group = findLowestAction(example.metadata[:example_group])
+
+      Versioner::Cli::Root.start("#{action_example_group.full_description} -d #{git_dir} -f #{File.dirname(__FILE__)}/TEST_VERSION -r #{related_version_files.join(" ")}".split)
     }
   }
 
@@ -59,7 +62,19 @@ describe "version" do
 
       it { should eq("1.2.34\n") }
 
+
+      describe "#bump over 9 -> 10" do
+        before {
+          Dir.chdir(git_dir) {
+            %x[git branch origin/version/1.3.9]
+            %x[git branch origin/version/1.3.10]
+          }
+        }
+
+        it { should eq("1.3.10\n") }
+      end
     end
+
 
   end
 
@@ -74,7 +89,7 @@ describe "version" do
     describe "bump" do
 
       it "should bump version and make branch" do
-        should eq("Bumped version to 1.2.35\n")
+        should include("Bumped version to 1.2.35\n")
 
         expect(Dir.chdir(git_dir) {
           %x[git branch]
