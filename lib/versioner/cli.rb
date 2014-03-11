@@ -1,31 +1,31 @@
 require 'thor'
 
 class String
-    def compare_as_version_string(other_string)
+  def compare_as_version_string(other_string)
 
-      self_parts = self.split(".")
-      other_parts = other_string.split(".")
+    self_parts = self.split(".")
+    other_parts = other_string.split(".")
 
-      if(self_parts.empty? ||  other_parts.empty?)
-        return self_parts.size <=> other_parts.size
-      end
-
-      zipped = self_parts.first(other_parts.size).zip(other_parts)
-
-      results = zipped.map { |self_item, other_item|
-        self_item.to_i <=> other_item.to_i
-      }
-
-      result = results.detect { |result_item|
-        result_item != 0
-      } || 0
-
-      if(result == 0 && other_parts.size != self_parts.size)
-        return self_parts.size <=> other_parts.size
-      end
-
-      result
+    if (self_parts.empty? || other_parts.empty?)
+      return self_parts.size <=> other_parts.size
     end
+
+    zipped = self_parts.first(other_parts.size).zip(other_parts)
+
+    results = zipped.map { |self_item, other_item|
+      self_item.to_i <=> other_item.to_i
+    }
+
+    result = results.detect { |result_item|
+      result_item != 0
+    } || 0
+
+    if (result == 0 && other_parts.size != self_parts.size)
+      return self_parts.size <=> other_parts.size
+    end
+
+    result
+  end
 end
 
 module Versioner
@@ -107,6 +107,7 @@ module Versioner
     class Next < BaseVersionStateTask
 
       class_option :push_to_origin, aliases: %w[-p], :type => :boolean, :description => 'Push to Origin after Bump'
+      class_option :commit_version_files, aliases: %w[-c], :type => :boolean, :description => 'Commit Version files after Bump'
 
       desc 'release', 'show next release version'
 
@@ -119,14 +120,24 @@ module Versioner
       def bump
         next_release_version = find_next_release_version
 
-        Dir.chdir(options[:git_dir]) {
-          %x[git branch version/#{next_release_version}]
-          %x[git push origin version/#{next_release_version}] if options[:push_to_origin]
-        }
-
         ([options[:version_file]] + options[:related_version_files]).each { |version_file|
           File.open(version_file, 'w') { |f| f.write(next_release_version) }
           say "Bumped #{version_file} to #{next_release_version}"
+        }
+
+        if (options[:commit_version_files])
+          Dir.chdir(options[:git_dir]) {
+            ([options[:version_file]] + options[:related_version_files]).each { |version_file|
+              %x[git add #{version_file}]
+            }
+
+            %x[git commit -m "Versioner bump version to #{next_release_version}"]
+          }
+        end
+
+        Dir.chdir(options[:git_dir]) {
+          %x[git branch version/#{next_release_version}]
+          %x[git push origin version/#{next_release_version}] if options[:push_to_origin]
         }
 
         say "Bumped version to #{next_release_version}"
