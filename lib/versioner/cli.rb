@@ -100,7 +100,7 @@ module Versioner
           %x[git push origin #{options[:version_prefix]}version/#{current_release_version}]
         }
 
-        say "Pushed #{options[:version_prefix]}version at #{next_release_version}"
+        say "Pushed #{options[:version_prefix]}version at #{current_release_version}"
       end
 
     end
