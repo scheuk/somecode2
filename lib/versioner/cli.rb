@@ -36,6 +36,7 @@ module Versioner
       class_option :version_file, aliases: %w[-f], :type => :string, :description => 'Version File', :default => './VERSION'
       class_option :git_dir, aliases: %w[-d], :type => :string, :description => 'Git Repo Directory', :default => '.'
       class_option :related_version_files, aliases: %w[-r], :type => :array, :description => 'Related Version Files', :default => []
+      class_option :version_prefix, aliases: %w[-v], :type => :string, :description => 'Prefix for version', :default => ""
 
       no_commands {
         def find_current_release_version
@@ -44,7 +45,7 @@ module Versioner
             remote_branches = %x[git branch -r].split
 
             current_release_version = (local_branches + remote_branches).select { |branch|
-              branch.start_with?("version") || branch.start_with?("origin/version")
+              branch.start_with?("#{options[:version_prefix]}version") || branch.start_with?("origin/#{options[:version_prefix]}version")
             }.map { |branch|
               branch.split("/").last
             }.sort { |v1, v2|
@@ -96,10 +97,10 @@ module Versioner
         current_release_version = find_current_release_version
 
         Dir.chdir(options[:git_dir]) {
-          %x[git push origin version/#{current_release_version}]
+          %x[git push origin #{options[:version_prefix]}version/#{current_release_version}]
         }
 
-        say "Pushed version #{current_release_version}"
+        say "Pushed #{options[:version_prefix]}version at #{next_release_version}"
       end
 
     end
@@ -136,8 +137,13 @@ module Versioner
         end
 
         Dir.chdir(options[:git_dir]) {
-          %x[git branch version/#{next_release_version}]
-          %x[git push origin version/#{next_release_version}] if options[:push_to_origin]
+          %x[git branch #{options[:version_prefix]}version/#{next_release_version}]
+          say "Bumped #{options[:version_prefix]}version to #{next_release_version}"
+
+          if options[:push_to_origin]
+            %x[git push origin #{options[:version_prefix]}version/#{next_release_version}]
+            say "Pushed #{options[:version_prefix]}version at #{next_release_version}"
+          end
         }
 
         say "Bumped version to #{next_release_version}"
