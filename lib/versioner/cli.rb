@@ -1,4 +1,6 @@
 require 'thor'
+require 'versioner/git_version_manager'
+require 'versioner/util'
 
 class String
   def compare_as_version_string(other_string)
@@ -33,31 +35,40 @@ module Versioner
 
     class BaseVersionStateTask < Thor
       include Thor::Actions
+      include Versioner::Util
+
       class_option :version_file, aliases: %w[-f], :type => :string, :description => 'Version File', :default => './VERSION'
       class_option :git_dir, aliases: %w[-d], :type => :string, :description => 'Git Repo Directory', :default => '.'
       class_option :related_version_files, aliases: %w[-r], :type => :array, :description => 'Related Version Files', :default => []
       class_option :version_prefix, aliases: %w[-v], :type => :string, :description => 'Prefix for version', :default => ""
+      class_option :version_object, aliases: %w[-o], :type => :string, :description => 'Object for version', :default => "branch"
+      class_option :version_file_manager_type, aliases: %w[-m], :type => :string, :description => 'Version File Manager Type (default simple)', :default => "simple"
+
+      attr_accessor :scm_version_manager, :version_file_manager
+
+      def initialize(*args)
+        super
+        self.scm_version_manager = Versioner::GitVersionManager.new(options)
+
+        require "versioner/#{options[:version_file_manager_type]}_version_file_manager"
+
+        self.version_file_manager = Versioner.const_get("#{options[:version_file_manager_type].capitalize}VersionFileManager").new(options)
+      end
 
       no_commands {
+
         def find_current_release_version
-          Dir.chdir(options[:git_dir]) {
-            local_branches = %x[git branch].split
-            remote_branches = %x[git branch -r].split
+          local_and_remote_branches = scm_version_manager.get_all_versions
 
-            current_release_version = (local_branches + remote_branches).select { |branch|
-              branch.start_with?("#{options[:version_prefix]}version") || branch.start_with?("origin/#{options[:version_prefix]}version")
-            }.map { |branch|
-              branch.split("/").last
-            }.sort { |v1, v2|
-              v1.compare_as_version_string(v2)
-            }.last
+          current_release_version = local_and_remote_branches.sort { |v1, v2|
+            v1.compare_as_version_string(v2)
+          }.last
 
-            default(current_release_version, "0.0.0").strip
-          }
+          default(current_release_version, "0.0.0").strip
         end
 
         def find_current_dev_version
-          default(File.read(options[:version_file]), "0.0.0").strip
+          self.version_file_manager.get_version
         end
 
         def find_next_release_version
@@ -65,14 +76,10 @@ module Versioner
           current_release_version_parts = find_current_release_version.split(".")
 
           next_parts = (current_dev_version_parts[0..-2] == current_release_version_parts[0..-2]) ?
-              current_release_version_parts :
-              current_dev_version_parts
+            current_release_version_parts :
+            current_dev_version_parts
 
-          next_release_version = (next_parts[0..-2] + [next_parts.last.to_i + 1]).join(".")
-        end
-
-        def default(value, default_value)
-          (value.nil? || value.strip.empty?) ? default_value : value
+          (next_parts[0..-2] + [next_parts.last.to_i + 1]).join(".")
         end
       }
     end
@@ -94,13 +101,7 @@ module Versioner
       desc 'push', 'push to the current released version to origin'
 
       def push
-        current_release_version = find_current_release_version
-
-        Dir.chdir(options[:git_dir]) {
-          %x[git push origin #{options[:version_prefix]}version/#{current_release_version}]
-        }
-
-        say "Pushed #{options[:version_prefix]}version at #{current_release_version}"
+        self.scm_version_manager.push_version(find_current_release_version)
       end
 
     end
@@ -121,14 +122,11 @@ module Versioner
       def bump
         next_release_version = find_next_release_version
 
-        ([options[:version_file]] + options[:related_version_files]).each { |version_file|
-          File.open(version_file, 'w') { |f| f.write(next_release_version) }
-          say "Bumped #{version_file} to #{next_release_version}"
-        }
+        self.version_file_manager.set_version(next_release_version)
 
         if (options[:commit_version_files])
           Dir.chdir(options[:git_dir]) {
-            ([options[:version_file]] + options[:related_version_files]).each { |version_file|
+            self.version_file_manager.all_version_files.each { |version_file|
               %x[git add #{version_file}]
             }
 
@@ -136,15 +134,11 @@ module Versioner
           }
         end
 
-        Dir.chdir(options[:git_dir]) {
-          %x[git branch #{options[:version_prefix]}version/#{next_release_version}]
-          say "Bumped #{options[:version_prefix]}version to #{next_release_version}"
+        self.scm_version_manager.create_version(next_release_version)
 
-          if options[:push_to_origin]
-            %x[git push origin #{options[:version_prefix]}version/#{next_release_version}]
-            say "Pushed #{options[:version_prefix]}version at #{next_release_version}"
-          end
-        }
+        if options[:push_to_origin]
+          self.scm_version_manager.push_version(next_release_version)
+        end
 
         say "Bumped version to #{next_release_version}"
       end

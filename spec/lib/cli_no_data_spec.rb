@@ -1,103 +1,105 @@
 require 'tmpdir'
 require 'versioner/cli'
 
-describe "version" do
+%w(branch tag).each do |version_object|
+  describe "version" do
 
-  let(:version_file) {
-    "#{File.dirname(__FILE__)}/TEST_VERSION"
-  }
-
-  let(:git_dir) {
-    Dir.mktmpdir
-  }
-
-  let(:related_version_files) {
-    ["#{File.dirname(__FILE__)}/TEST_VERSION_2", "#{File.dirname(__FILE__)}/TEST_VERSION_3"]
-  }
-
-  before {
-    File.open(version_file, 'w') { |f| f.write("") }
-
-    Dir.chdir(git_dir) {
-      %x[git init]
-      %x[touch somefile]
-      %x[git add somefile]
-      %x[git commit -m "init" .]
-    }
-  }
-
-  after {
-    File.delete(version_file)
-
-    related_version_files.each { |related_file|
-      File.delete(related_file) if File.exist?(related_file)
+    let(:version_file) {
+      "#{File.dirname(__FILE__)}/TEST_VERSION"
     }
 
-    FileUtils.remove_entry git_dir
-  }
-
-  subject {
-    capture(:stdout) {
-      Versioner::Cli::Root.start("#{example.metadata[:example_group].full_description} -d #{git_dir} -f #{File.dirname(__FILE__)}/TEST_VERSION -r #{related_version_files.join(" ")}".split)
+    let(:git_dir) {
+      Dir.mktmpdir
     }
-  }
 
-  describe "current" do
+    let(:related_version_files) {
+      ["#{File.dirname(__FILE__)}/TEST_VERSION_2", "#{File.dirname(__FILE__)}/TEST_VERSION_3"]
+    }
 
-    describe "dev" do
+    before {
+      File.open(version_file, 'w') { |f| f.write("") }
 
-      it { should eq("0.0.0\n") }
+      Dir.chdir(git_dir) {
+        %x[git init]
+        %x[touch somefile]
+        %x[git add somefile]
+        %x[git commit -m "init" .]
+      }
+    }
 
-    end
+    after {
+      File.delete(version_file)
 
-    describe "release" do
+      related_version_files.each { |related_file|
+        File.delete(related_file) if File.exist?(related_file)
+      }
 
-      it { should eq("0.0.0\n") }
+      FileUtils.remove_entry git_dir
+    }
 
-    end
+    subject {
+      capture(:stdout) {
+        Versioner::Cli::Root.start("#{example.metadata[:example_group].full_description} -d #{git_dir} -f #{File.dirname(__FILE__)}/TEST_VERSION -o #{version_object} -r #{related_version_files.join(" ")}".split)
+      }
+    }
 
-  end
+    describe "current" do
 
-  describe "next" do
+      describe "dev" do
 
-    describe "release" do
-
-      it { should eq("0.0.1\n") }
-
-    end
-
-
-    describe "bump" do
-
-      it "should bump version and make branch" do
-        should include("Bumped version to 0.0.1\n")
-
-        expect(Dir.chdir(git_dir) {
-          %x[git branch]
-        }).to include("version/0.0.1")
-
+        it { should eq("0.0.0\n") }
 
       end
 
-      it "should bump version and make branch" do
-        should include("Bumped version to 0.0.1\n")
+      describe "release" do
 
-        expect(Dir.chdir(git_dir) {
-          %x[git branch]
-        }).to include("version/0.0.1")
+        it { should eq("0.0.0\n") }
 
-        expect(Dir.chdir(git_dir) {
-          %x[git branch]
-        }).to_not include("version/0.0.2")
-
-        expect(File.read(version_file)).to eq("0.0.1")
-
-        related_version_files.each { |related_file|
-          expect(File.read(related_file)).to eq("0.0.1")
-        }
       end
 
     end
-  end
 
+    describe "next" do
+
+      describe "release" do
+
+        it { should eq("0.0.1\n") }
+
+      end
+
+
+      describe "bump" do
+
+        it "should bump version and make #{version_object}" do
+          should include("Bumped version to 0.0.1\n")
+
+          expect(Dir.chdir(git_dir) {
+            %x[git #{version_object}]
+          }).to include("version/0.0.1")
+
+
+        end
+
+        it "should bump version and make #{version_object}" do
+          should include("Bumped version to 0.0.1\n")
+
+          expect(Dir.chdir(git_dir) {
+            %x[git #{version_object}]
+          }).to include("version/0.0.1")
+
+          expect(Dir.chdir(git_dir) {
+            %x[git #{version_object}]
+          }).to_not include("version/0.0.2")
+
+          expect(File.read(version_file)).to eq("0.0.1")
+
+          related_version_files.each { |related_file|
+            expect(File.read(related_file)).to eq("0.0.1")
+          }
+        end
+
+      end
+    end
+
+  end
 end
