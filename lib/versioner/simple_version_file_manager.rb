@@ -5,11 +5,12 @@ module Versioner
   class SimpleVersionFileManager < Thor
     include Versioner::Util
 
-    attr_accessor :version_file, :related_version_files
+    attr_accessor :version_file, :related_version_files, :extra_flags
 
     def initialize(options)
       self.version_file = options[:version_file]
       self.related_version_files = options[:related_version_files]
+      self.extra_flags = options[:extra_flags]
     end
 
     no_commands do

@@ -43,6 +43,7 @@ module Versioner
       class_option :version_prefix, aliases: %w[-v], :type => :string, :description => 'Prefix for version', :default => ""
       class_option :version_object, aliases: %w[-o], :type => :string, :description => 'Object for version', :default => "branch"
       class_option :version_file_manager_type, aliases: %w[-m], :type => :string, :description => 'Version File Manager Type (default simple)', :default => "simple"
+      class_option :extra_flags, aliases: %w[-e], :type => :string, :description => 'Extra Flags (comma separated)', :default => ""
 
       attr_accessor :scm_version_manager, :version_file_manager
 
@@ -126,7 +127,7 @@ module Versioner
 
         if (options[:commit_version_files])
           Dir.chdir(options[:git_dir]) {
-            self.version_file_manager.all_version_files.each { |version_file|
+            (self.version_file_manager.all_version_files + self.version_file_manager.extra_version_files).each { |version_file|
               %x[git add #{version_file}]
             }
 

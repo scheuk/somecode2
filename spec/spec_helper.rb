@@ -2,7 +2,7 @@ require 'rspec'
 require 'yarjuf'
 
 RSpec.configure do |config|
-  config.color_enabled = true
+  # config.color_enabled = true
   config.formatter = 'documentation'
 
   def capture(stream)

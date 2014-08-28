@@ -36,12 +36,23 @@ module Versioner
         File.open(version_file, 'w') { |f|
           f.puts version_file_lines
         }
+
+        puts self.extra_flags.include?("berkshelf")
+        `berks install` if self.extra_flags.include?("berkshelf")
       end
 
       def version_file_lines(version_file)
         File.read(version_file).lines.map { |line|
           line.strip
         }
+      end
+
+      def extra_version_files
+        if self.extra_flags.include?("berkshelf")
+          ['Berksfile.lock']
+        else
+          []
+        end
       end
     end
   end

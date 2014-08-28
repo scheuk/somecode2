@@ -64,7 +64,8 @@ supports \'ubuntu\', \'14.04\'
 
   let(:options) do
     {
-      version_file: version_file_name
+      version_file: version_file_name,
+      extra_flags: ""
     }
   end
 
@@ -102,7 +103,24 @@ supports \'ubuntu\', \'14.04\'
 
     subject { instance._set_version(other_version_file, '3.2.1') }
 
-    it { should be_nil }
+    it {
+      instance.should_not_receive(:`).with('berks install')
+      subject.should be_nil
+    }
+
+    context 'berks extra flag' do
+      let(:options) do
+        {
+          version_file: version_file_name,
+          extra_flags: "berkshelf"
+        }
+      end
+
+      it {
+        instance.should_receive(:`).with('berks install')
+        subject.should be_nil
+      }
+    end
 
     context 'no version file line' do
       let(:version_file_contents) { no_version_line_contents }
