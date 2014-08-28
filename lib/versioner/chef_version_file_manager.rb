@@ -37,8 +37,11 @@ module Versioner
           f.puts version_file_lines
         }
 
-        puts self.extra_flags.include?("berkshelf")
-        `berks install` if self.extra_flags.include?("berkshelf")
+        if self.extra_flags.include?("berkshelf")
+          puts 'Running berks install...'
+          puts `berks install`
+          puts 'Finished berks install'
+        end
       end
 
       def version_file_lines(version_file)
