@@ -41,6 +41,9 @@ module Versioner
           puts 'Running berks install...'
           puts `berks install`
           puts 'Finished berks install'
+          puts 'Running berks update...'
+          puts `berks update`
+          puts 'Finished berks update'
         end
       end
 
