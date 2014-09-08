@@ -32,6 +32,10 @@ module Versioner
       def all_version_files
         ([self.version_file] + self.related_version_files)
       end
+
+      def extra_version_files
+        []
+      end
     end
   end
 end
